@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+# Gizli bilgiler asla repoya girmez
+.env
+.env.*
+*.pem
+*.key
+*.crx
+*.zip
+secrets.*
+release/
+# Yerel geliştirici notları (GitHub dışında)
+docs/

@@ -1,0 +1,29 @@
+{
+  "name": "table-extractor",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Chrome extension (MV3) that extracts selected rows and columns from Varbank 2.0 tables as JSON and optionally discusses them with an AI model via Groq.",
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "build": "vite build && vite build --config vite.content.config.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:secrets": "node scripts/check-secrets.js",
+    "package": "npm test && npm run build && npm run check:secrets && node scripts/package.js"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^30.1.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}
