@@ -21,6 +21,19 @@ export const DEFAULT_SETTINGS = Object.freeze({
   askEveryTime: true, // Her veri gönderiminde onay sor
   saveHistory: true,
   keyStorage: 'local', // 'local' | 'session'
+  textSize: 'md', // TEXT_SIZES anahtarlarından biri
 });
+
+// Panelin yazı boyutu ön ayarları (kök font-size, px). Tüm stiller rem cinsinden olduğu için
+// düzen bu değerle orantılı ölçeklenir. Sıra önemlidir: A−/A+ bu sırayla gezinir.
+export const TEXT_SIZES = Object.freeze([
+  { id: 'sm', label: 'Small', short: 'S', px: 12 },
+  { id: 'md', label: 'Default', short: 'M', px: 13.5 },
+  { id: 'lg', label: 'Large', short: 'L', px: 15 },
+  { id: 'xl', label: 'X-Large', short: 'XL', px: 16.5 },
+  { id: 'xxl', label: 'XX-Large', short: 'XXL', px: 18 },
+]);
+
+export const textSizeOf = (id) => TEXT_SIZES.find((t) => t.id === id) || TEXT_SIZES.find((t) => t.id === 'md');
 
 export const isVarbankUrl = (url) => typeof url === 'string' && url.startsWith(VARBANK_URL_PREFIX);

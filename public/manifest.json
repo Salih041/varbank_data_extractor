@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Table Extractor",
   "short_name": "Table Extractor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Extracts selected rows/columns from Varbank 2.0 tables as JSON and optionally chats about them with AI.",
   "minimum_chrome_version": "116",
   "permissions": ["sidePanel", "storage", "declarativeContent"],

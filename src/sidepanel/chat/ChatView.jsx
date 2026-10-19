@@ -150,7 +150,7 @@ function Message({ msg, isLast, streaming, onCopy, onRegenerate, onEdit, onRetry
               Edit
             </button>
           )}
-          {msg.usage?.total ? <span className="hint">{msg.usage.total} token</span> : null}
+          {msg.usage?.total ? <span className="hint usage">{msg.usage.total} tokens</span> : null}
         </div>
       )}
     </article>
@@ -389,7 +389,8 @@ export default function ChatView({ settings, update, store, pendingData, setPend
           ref={inputRef}
           rows={1}
           value={draft}
-          placeholder={attachment ? 'Ask a question about the attached data…' : 'Type a message… (Enter to send, Shift+Enter for a new line)'}
+          placeholder={attachment ? 'Ask about the attached data…' : 'Type a message…'}
+          title="Enter to send · Shift+Enter for a new line · Esc to stop"
           onChange={(e) => {
             setDraft(e.target.value);
             const el = e.target;
@@ -400,13 +401,17 @@ export default function ChatView({ settings, update, store, pendingData, setPend
           maxLength={LIMITS.MAX_USER_MESSAGE_CHARS}
           aria-label="Message"
         />
-        <div className="row-actions">
-          <span className={`hint ${overBudget ? 'error' : ''}`}>
-            {estimate && `~${formatTokens(estimate.estimatedTokens)} / ${formatTokens(contextTokens - LIMITS.DEFAULT_MAX_COMPLETION_TOKENS)} token`}
-            {overBudget && ' — exceeds the context limit'}
+        <div className="composer-meta">
+          <span
+            className={`hint budget ${overBudget ? 'error' : ''}`}
+            title={overBudget ? 'The request exceeds the model context limit' : 'Estimated request size / context budget'}
+          >
+            {estimate && `~${formatTokens(estimate.estimatedTokens)} / ${formatTokens(contextTokens - LIMITS.DEFAULT_MAX_COMPLETION_TOKENS)} tokens`}
+            {overBudget && <span className="long-only"> — exceeds the context limit</span>}
           </span>
-          <span className="spacer" />
-          <span className="hint">{settings.model}</span>
+          <span className="hint model-name" title={settings.model}>
+            {settings.model}
+          </span>
           {streaming ? (
             <button type="button" onClick={stop}>
               ■ Stop

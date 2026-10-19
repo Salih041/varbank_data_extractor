@@ -5,6 +5,7 @@ import { useConversations } from './state/conversations.js';
 import TablesView from './tables/TablesView.jsx';
 import ChatView from './chat/ChatView.jsx';
 import SettingsView from './settings/SettingsView.jsx';
+import { TextSizeStepper, useApplyTextSize } from './settings/TextSize.jsx';
 
 const VIEWS = [
   ['tables', 'Tables'],
@@ -40,6 +41,7 @@ export default function App() {
   const [pendingData, setPendingData] = useState(null);
   const [settings, updateSettings] = useSettings();
   const store = useConversations(settings?.saveHistory);
+  useApplyTextSize(settings?.textSize);
 
   const refreshTab = useCallback(() => {
     // null = "Varbank sekmesi yok"; undefined yalnızca ilk yükleme. Aynı sekmeyse nesneyi koru
@@ -86,9 +88,11 @@ export default function App() {
             {id === 'chat' && pendingData ? ' •' : ''}
           </button>
         ))}
+        <span className="divider" aria-hidden="true" />
+        <TextSizeStepper value={settings.textSize} onChange={(textSize) => updateSettings({ textSize })} />
         {/* Chrome yan panel genişliğini eklentiye ayarlatmaz; geniş görünüm için ayrı pencere. */}
         {!pinnedTabId && tab && (
-          <button type="button" className="popout" title="Open in a wide window" aria-label="Open in a wide window" onClick={() => openWideWindow(tab.id)}>
+          <button type="button" className="tool" title="Open in a wide window" aria-label="Open in a wide window" onClick={() => openWideWindow(tab.id)}>
             ⧉
           </button>
         )}

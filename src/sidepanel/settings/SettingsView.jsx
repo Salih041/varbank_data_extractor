@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { MSG } from '../../shared/messages.js';
 import { LIMITS } from '../../shared/limits.js';
 import { formatTokens, estimateTokens } from '../../shared/tokens.js';
+import { DEFAULT_SETTINGS } from '../../shared/config.js';
 import { errorText, sendToBackground } from '../api.js';
+import { TextSizePicker } from './TextSize.jsx';
 
 function ApiKeyForm() {
   const [status, setStatus] = useState(null);
@@ -57,7 +59,7 @@ function ApiKeyForm() {
           onChange={(e) => setKey(e.target.value)}
           aria-label="Groq API key"
         />
-        <div className="radio-row">
+        <div className="radio-row options">
           <label>
             <input type="radio" checked={storage === 'local'} onChange={() => setStorage('local')} />
             Store on this device
@@ -94,7 +96,7 @@ function ModelSelect({ settings, update }) {
   return (
     <fieldset className="box">
       <legend>Model</legend>
-      <div className="row-actions">
+      <div className="row-actions model-row">
         {models ? (
           <select
             value={settings.model}
@@ -111,7 +113,9 @@ function ModelSelect({ settings, update }) {
             ))}
           </select>
         ) : (
-          <code>{settings.model}</code>
+          <code className="ellipsis" title={settings.model}>
+            {settings.model}
+          </code>
         )}
         <button type="button" onClick={load}>
           Load models
@@ -119,7 +123,10 @@ function ModelSelect({ settings, update }) {
       </div>
       {err && <p className="notice error">{err}</p>}
       <label className="field">
-        <span className="field-label">Temperature: {settings.temperature.toFixed(1)}</span>
+        <span className="field-label value-label">
+          <span>Temperature</span>
+          <span className="value">{settings.temperature.toFixed(1)}</span>
+        </span>
         <input
           type="range"
           min="0"
@@ -152,9 +159,12 @@ function PrivacySettings({ settings, update, onClearHistory }) {
         Ask for confirmation before every data send
       </label>
       <label className="field">
-        <span className="field-label">
-          Max data sent to AI: {settings.maxAttachmentChars.toLocaleString('en-US')} characters (~
-          {formatTokens(estimateTokens('x'.repeat(settings.maxAttachmentChars)))} token)
+        <span className="field-label value-label">
+          <span>Max data sent to AI</span>
+          <span className="value">
+            {settings.maxAttachmentChars.toLocaleString('en-US')} chars · ~
+            {formatTokens(estimateTokens('x'.repeat(settings.maxAttachmentChars)))} tokens
+          </span>
         </span>
         <input
           type="range"
@@ -195,9 +205,28 @@ function PrivacySettings({ settings, update, onClearHistory }) {
   );
 }
 
+function AppearanceSettings({ settings, update }) {
+  return (
+    <fieldset className="box">
+      <legend>Appearance</legend>
+      <div className="row-actions">
+        <span className="field-label spacer">Text size</span>
+        {settings.textSize !== DEFAULT_SETTINGS.textSize && (
+          <button type="button" className="link" onClick={() => update({ textSize: DEFAULT_SETTINGS.textSize })}>
+            Reset to default
+          </button>
+        )}
+      </div>
+      <TextSizePicker value={settings.textSize} onChange={(textSize) => update({ textSize })} />
+      <p className="hint">Also available from the A− / A+ buttons at the top of the panel.</p>
+    </fieldset>
+  );
+}
+
 export default function SettingsView({ settings, update, onClearHistory }) {
   return (
     <div className="settings-view">
+      <AppearanceSettings settings={settings} update={update} />
       <ApiKeyForm />
       <ModelSelect settings={settings} update={update} />
       <PrivacySettings settings={settings} update={update} onClearHistory={onClearHistory} />

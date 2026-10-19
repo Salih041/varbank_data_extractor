@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { DEFAULT_SETTINGS } from '../../shared/config.js';
+import { DEFAULT_SETTINGS, textSizeOf } from '../../shared/config.js';
 import { clampAttachmentChars } from '../../shared/limits.js';
 
 const KEY = 'settings';
 
-function normalize(raw) {
+export function normalize(raw) {
   const s = { ...DEFAULT_SETTINGS, ...(raw && typeof raw === 'object' ? raw : {}) };
   s.temperature = Math.min(2, Math.max(0, Number(s.temperature) || 0));
   s.maxAttachmentChars = clampAttachmentChars(s.maxAttachmentChars);
   for (const k of ['allowAiData', 'askEveryTime', 'saveHistory']) s[k] = !!s[k];
   s.keyStorage = s.keyStorage === 'session' ? 'session' : 'local';
+  s.textSize = textSizeOf(s.textSize).id;
   s.model = typeof s.model === 'string' && s.model ? s.model : DEFAULT_SETTINGS.model;
   if (s.contextWindow != null) s.contextWindow = Number(s.contextWindow) || null;
   return s;

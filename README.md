@@ -11,7 +11,8 @@ A Chrome extension (Manifest V3) for [Varbank 2.0](https://varbank.ccg.uni-koeln
   - columns: any subset (hidden columns available), optionally with cell links
 - **Export** — download as a `.json` file or copy to the clipboard.
 - **AI chat** — streaming chat with a Groq model in the side panel; attach extracted data to a message.
-- **Side panel UI** — stays open next to the site; can also be opened in a wide window (⧉).
+- **Side panel UI** — stays open next to the site; can also be opened in a wide window (⧉). Soft, low-glare light theme.
+- **Adjustable text size** — five sizes in **Settings → Appearance**, or the **A− / A+** buttons at the top of the panel; the whole layout scales with it.
 - **Privacy first** — nothing is sent anywhere without your explicit confirmation (see [Privacy](#privacy-and-security)).
 
 ## Installation (from source)

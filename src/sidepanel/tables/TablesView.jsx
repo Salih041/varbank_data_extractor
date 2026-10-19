@@ -135,18 +135,18 @@ function RowSelector({ grid, rowMode, setRowMode, manualIds, setManualIds, previ
   return (
     <fieldset className="box">
       <legend>Rows</legend>
-      <div className="radio-row">
+      <div className="radio-row options">
         <label>
           <input type="radio" checked={rowMode === 'selected'} onChange={() => setRowMode('selected')} />
-          Selected on site ({grid.selectedCount})
+          <span className="opt-text">Selected on site</span> <span className="count">({grid.selectedCount})</span>
         </label>
         <label>
           <input type="radio" checked={rowMode === 'visible'} onChange={() => setRowMode('visible')} />
-          All visible ({grid.rowCount})
+          <span className="opt-text">All visible</span> <span className="count">({grid.rowCount})</span>
         </label>
         <label>
           <input type="radio" checked={rowMode === 'ids'} onChange={() => setRowMode('ids')} />
-          Pick manually ({manualIds.size})
+          <span className="opt-text">Pick manually</span> <span className="count">({manualIds.size})</span>
         </label>
       </div>
       {grid.pagingInfo && <p className="hint">Paging: {grid.pagingInfo}. Only the page currently shown on the site is extracted.</p>}
