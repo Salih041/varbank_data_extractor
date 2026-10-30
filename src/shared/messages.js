@@ -10,12 +10,17 @@ export const MSG = Object.freeze({
   EXTRACT: 'EXTRACT',
   // panel -> background
   GET_KEY_STATUS: 'GET_KEY_STATUS',
-  SET_API_KEY: 'SET_API_KEY',
-  CLEAR_API_KEY: 'CLEAR_API_KEY',
-  LIST_MODELS: 'LIST_MODELS',
+  SET_ACCESS_KEY: 'SET_ACCESS_KEY',
+  CLEAR_ACCESS_KEY: 'CLEAR_ACCESS_KEY',
+  DELETE_THREAD: 'DELETE_THREAD',
 });
 
+// Sohbet akışı: panel {type:'start', threadId, message, attachment?} veya {type:'abort'} gönderir;
+// background sunucunun olaylarını iletir: token, tool_start, tool_result, question, done, error.
 export const PORT_CHAT = 'chat-stream';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (v) => typeof v === 'string' && UUID_RE.test(v);
 
 const GRID_ID_RE = /^[A-Za-z][\w-]{0,63}$/;
 const COL_KEY_RE = /^[\w-]{1,64}$/;

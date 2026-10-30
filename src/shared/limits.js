@@ -8,7 +8,8 @@ export const LIMITS = Object.freeze({
   MAX_HEADER_CHARS: 80,
 
   // AI'ya gönderim
-  DEFAULT_MAX_ATTACHMENT_CHARS: 40_000,
+  // ~3.000 token. Groq'un ücretsiz planı dakikada 8.000 token'a izin verdiği için düşük tutulur.
+  DEFAULT_MAX_ATTACHMENT_CHARS: 12_000,
   MIN_MAX_ATTACHMENT_CHARS: 2_000,
   HARD_MAX_ATTACHMENT_CHARS: 120_000,
   MAX_USER_MESSAGE_CHARS: 8_000,

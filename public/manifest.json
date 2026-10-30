@@ -2,11 +2,11 @@
   "manifest_version": 3,
   "name": "Table Extractor",
   "short_name": "Table Extractor",
-  "version": "1.1.0",
-  "description": "Extracts selected rows/columns from Varbank 2.0 tables as JSON and optionally chats about them with AI.",
+  "version": "2.0.0",
+  "description": "Extracts rows/columns from Varbank 2.0 tables as JSON and lets you discuss them with an AI assistant that can search the web.",
   "minimum_chrome_version": "116",
   "permissions": ["sidePanel", "storage", "declarativeContent"],
-  "host_permissions": ["https://api.groq.com/*"],
+  "host_permissions": ["http://localhost:8000/*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "side_panel": { "default_path": "sidepanel.html" },
   "action": { "default_title": "Table Extractor" },
@@ -20,6 +20,6 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; img-src 'self'; connect-src https://api.groq.com"
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; img-src 'self'; connect-src http://localhost:8000"
   }
 }

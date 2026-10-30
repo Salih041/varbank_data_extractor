@@ -1,26 +1,24 @@
-// Sabit yapılandırma. API adresi bilerek ayarlanabilir değildir: manifest CSP'si
-// (connect-src) ve host_permissions ile birlikte değişmesi gerekir. Proxy'ye geçişte bu adres,
-// manifest'teki host_permissions ve CSP connect-src birlikte güncellenir.
+// Sabit yapılandırma. Sunucu adresi kullanıcı tarafından değiştirilemez; build sırasında
+// manifest'teki host_permissions ve CSP connect-src ile birlikte ayarlanır.
+
+import { LIMITS } from './limits.js';
 
 export const VARBANK_HOST = 'varbank.ccg.uni-koeln.de';
 export const VARBANK_PATH_PREFIX = '/varbank2/';
 export const VARBANK_URL_PREFIX = `https://${VARBANK_HOST}${VARBANK_PATH_PREFIX}`;
-export const API_BASE_URL = 'https://api.groq.com/openai/v1';
 
-// /models listesi alınamazsa kullanılacak varsayılan. Mevcut değilse listeden ilk sohbet modeli seçilir.
-export const FALLBACK_MODEL = 'llama-3.3-70b-versatile';
+// Agent sunucusu (server/). Build sırasında AGENT_URL ile verilir (vite.config.js);
+// verilmezse (geliştirme, testler) yerel sunucu.
+/* global __AGENT_BASE_URL__ */
+export const AGENT_BASE_URL = typeof __AGENT_BASE_URL__ === 'string' ? __AGENT_BASE_URL__ : 'http://localhost:8000';
 
-// Sohbet için uygun olmayan modelleri listeden çıkar (ses, TTS, güvenlik sınıflandırıcıları).
-export const NON_CHAT_MODEL_RE = /whisper|tts|guard|playai|orpheus|distil|safeguard/i;
-
+// Model ve temperature artık sunucuda seçiliyor; burada yalnızca panelin kendi ayarları var.
 export const DEFAULT_SETTINGS = Object.freeze({
-  model: FALLBACK_MODEL,
-  temperature: 0.3,
-  maxAttachmentChars: 40_000,
+  maxAttachmentChars: LIMITS.DEFAULT_MAX_ATTACHMENT_CHARS,
   allowAiData: false, // Tablo verisinin AI'ya gönderimi: varsayılan KAPALI
   askEveryTime: true, // Her veri gönderiminde onay sor
   saveHistory: true,
-  keyStorage: 'local', // 'local' | 'session'
+  keyStorage: 'local', // erişim anahtarı: 'local' | 'session'
   textSize: 'md', // TEXT_SIZES anahtarlarından biri
 });
 

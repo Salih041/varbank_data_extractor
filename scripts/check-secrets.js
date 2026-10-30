@@ -3,8 +3,11 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ROOTS = ['src', 'public', 'tests', 'scripts', 'docs', 'dist', 'README.md', 'PRIVACY.md', 'package.json'];
-const PATTERNS = [/gsk_[A-Za-z0-9]{20,}/, /sk-[A-Za-z0-9]{32,}/, /Bearer\s+[A-Za-z0-9._-]{30,}/];
+const ROOTS = ['src', 'public', 'tests', 'scripts', 'docs', 'dist', 'server', 'README.md', 'PRIVACY.md', 'package.json'];
+const PATTERNS = [/gsk_[A-Za-z0-9]{20,}/, /tvly-[A-Za-z0-9-]{20,}/, /sk-[A-Za-z0-9]{32,}/, /Bearer\s+[A-Za-z0-9._-]{30,}/];
+// Bağımlılık/önbellek klasörleri taranmaz. server/.env gerçek anahtarı tutar ama git dışıdır (.gitignore).
+const SKIP_DIRS = new Set(['node_modules', '.venv', '__pycache__', '.pytest_cache']);
+const SKIP_FILE = /(^|[\\/])\.env(\.(?!example$)[^\\/]*)?$/;
 
 function* walk(p) {
   let st;
@@ -14,8 +17,8 @@ function* walk(p) {
     return;
   }
   if (st.isDirectory()) {
-    for (const e of readdirSync(p)) if (e !== 'node_modules') yield* walk(join(p, e));
-  } else if (!/\.(png|jpg|ico)$/i.test(p)) yield p;
+    for (const e of readdirSync(p)) if (!SKIP_DIRS.has(e)) yield* walk(join(p, e));
+  } else if (!/\.(png|jpg|ico)$/i.test(p) && !SKIP_FILE.test(p)) yield p;
 }
 
 let found = 0;

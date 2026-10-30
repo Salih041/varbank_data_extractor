@@ -4,11 +4,20 @@ coverage/
 # Gizli bilgiler asla repoya girmez
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 *.crx
 *.zip
 secrets.*
 release/
+# Python (server/)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Konuşma veritabanı (kullanıcı verisi içerir)
+*.db
+*.db-*
 # Yerel geliştirici notları (GitHub dışında)
 docs/

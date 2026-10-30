@@ -10,6 +10,20 @@ import remarkGfm from 'remark-gfm';
 
 export const safeUrl = (url) => (typeof url === 'string' && /^https?:\/\//i.test(url.trim()) ? url : '');
 
+// Bazı modeller kaynakları 【https://…】 biçiminde yazıyor; bunları normal bağlantıya çevirir.
+// Bağlantının metni sitenin adı olur (ör. "ncbi.nlm.nih.gov"). Asıl güvenlik yine safeUrl'de.
+export function linkifyCitations(text) {
+  return text.replace(/【\s*(https?:\/\/[^\s】]+)\s*】/g, (_, url) => {
+    let host = 'source';
+    try {
+      host = new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      // geçersiz adres: "source" kalır
+    }
+    return ` [${host}](${url})`;
+  });
+}
+
 const components = {
   a: ({ href, children }) =>
     href ? (
@@ -25,7 +39,7 @@ const components = {
 export default function SafeMarkdown({ text }) {
   return (
     <Markdown remarkPlugins={[remarkGfm]} skipHtml urlTransform={safeUrl} components={components}>
-      {text}
+      {linkifyCitations(text)}
     </Markdown>
   );
 }

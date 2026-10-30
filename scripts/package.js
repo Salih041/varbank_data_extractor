@@ -8,6 +8,13 @@ const DIST = 'dist';
 const manifest = JSON.parse(readFileSync(join(DIST, 'manifest.json'), 'utf8'));
 const out = join('release', `table-extractor-${manifest.version}.zip`);
 
+// Mağaza paketi yerel geliştirme sunucusuna bağlı olamaz.
+if (JSON.stringify(manifest).includes('localhost')) {
+  console.error('Paket localhost sunucusuna bağlı. Yayın adresiyle paketleyin:');
+  console.error('  $env:AGENT_URL="https://<cloud-run-adresi>"; npm run package');
+  process.exit(1);
+}
+
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;

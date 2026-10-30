@@ -23,8 +23,10 @@ export default function ConsentDialog({ attachment, identifierCols, excludeIds, 
       <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="consent-title">
         <h2 id="consent-title">Send table data?</h2>
         <p>
-          The data below will be sent with your message to <strong>api.groq.com</strong> (Groq, USA). Varbank data comes from a
-          login-protected system and may contain patient/sample health data.
+          The data below will be sent with your message to the <strong>Table Extractor AI server</strong> and the AI model
+          provider <strong>Groq</strong> (USA). The server keeps it with this chat until you delete the chat (at most 7
+          days). If the assistant searches the web, only its short search terms go to <strong>Tavily</strong>, never the
+          table. Varbank data comes from a login-protected system and may contain patient/sample health data.
         </p>
         <ul className="facts">
           <li>Table: {a.caption}{a.tab ? ` (${a.tab})` : ''}</li>
@@ -51,7 +53,7 @@ export default function ConsentDialog({ attachment, identifierCols, excludeIds, 
           </pre>
         </details>
         {needsEnable && (
-          <p className="hint">Confirming turns on “Allow sending table data to the AI service” in Settings.</p>
+          <p className="hint">Confirming turns on “Allow sending table data to the AI assistant” in Settings.</p>
         )}
         <label className="check">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />

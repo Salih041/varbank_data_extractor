@@ -213,6 +213,22 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 0.89rem; color
   background: var(--danger-soft); border-radius: var(--radius-sm); padding: 0.45rem 0.6rem; margin-top: 0.6rem;
 }
 .img-alt { color: var(--muted); }
+/* Agent'ın adımları, kaynaklar ve kullanıcıya sorduğu soru */
+.agent-steps { list-style: none; margin: 0 0 0.6rem; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.agent-steps li { color: var(--muted); font-size: 0.89rem; overflow-wrap: anywhere; }
+.agent-steps .query { color: var(--accent-text); }
+.sources { margin-top: 0.6rem; font-size: 0.89rem; }
+.sources summary { cursor: pointer; color: var(--muted); }
+.sources ol { margin: 0.3rem 0 0; padding-left: 1.5rem; }
+.sources li { overflow-wrap: anywhere; }
+.question-card {
+  margin-top: 0.6rem; padding: 0.6rem 0.75rem; border-radius: var(--radius-sm);
+  background: var(--highlight-soft); color: var(--highlight-soft-fg); border: 1px solid rgb(255 209 91 / 0.7);
+}
+.question-text { margin: 0 0 0.45rem; font-weight: 600; }
+.question-options { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.question-options button { max-width: 100%; text-align: left; white-space: normal; }
+.question-card .hint { color: inherit; opacity: 0.85; margin-bottom: 0; }
 .examples { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1rem; }
 .example { text-align: left; padding: 0.65rem 0.9rem; }
 
@@ -248,14 +264,9 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 0.89rem; color
 .radio-row.options .opt-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .count { color: var(--muted); white-space: nowrap; }
 .composer-meta { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
-.composer-meta .hint { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.composer-meta .budget { flex: 0 1 auto; }
-.composer-meta .model-name { flex: 1 1 auto; text-align: right; }
 .composer-meta button { flex: 0 0 auto; margin-left: auto; white-space: nowrap; }
 .value-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.1rem 0.6rem; }
 .value-label .value { text-transform: none; letter-spacing: 0; color: var(--fg); font-weight: 600; }
-.model-row select, .model-row code { flex: 1 1 10rem; min-width: 0; }
-.model-row button { flex: 0 0 auto; white-space: nowrap; }
 
 /* --- Kompakt düzen ---------------------------------------------------------------
    Panel, yazı boyutuna göre darsa devreye girer: 26rem = Default boyutta 351px, XX-Large boyutta 468px.
@@ -269,8 +280,6 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 0.89rem; color
   .long-only { display: none; }
   .short-only { display: inline; }
   .radio-row.options { flex-direction: column; gap: 0.35rem; }
-  .composer-meta .model-name { display: none; }
-  .msg-actions .usage { display: none; }
   .conv-bar { gap: 0.3rem; }
   .conv-bar .icon { padding: 0.3rem 0.45rem; }
   .field-label { letter-spacing: 0.02em; }

@@ -6,7 +6,10 @@ import { DEFAULT_SETTINGS } from '../../shared/config.js';
 import { errorText, sendToBackground } from '../api.js';
 import { TextSizePicker } from './TextSize.jsx';
 
-function ApiKeyForm() {
+// AI sohbeti davetle açılır: sunucu yalnızca bu anahtarı bilenlerin isteklerini kabul eder.
+const MIN_ACCESS_KEY_CHARS = 12;
+
+function AccessKeyForm() {
   const [status, setStatus] = useState(null);
   const [key, setKey] = useState('');
   const [storage, setStorage] = useState('local');
@@ -21,24 +24,24 @@ function ApiKeyForm() {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
-    const res = await sendToBackground({ type: MSG.SET_API_KEY, key, storage });
+    const res = await sendToBackground({ type: MSG.SET_ACCESS_KEY, key, storage });
     setBusy(false);
     setKey(''); // anahtar bellekte/arayüzde tutulmaz
     if (res.ok) {
       setStatus(res);
-      setMsg({ kind: 'ok', text: 'Key verified and saved.' });
-    } else setMsg({ kind: 'error', text: res.error === 'BAD_REQUEST' ? 'Invalid key format.' : errorText(res.error) });
+      setMsg({ kind: 'ok', text: 'Access key verified and saved.' });
+    } else setMsg({ kind: 'error', text: errorText(res.error) });
   }
 
   async function clear() {
-    const res = await sendToBackground({ type: MSG.CLEAR_API_KEY });
+    const res = await sendToBackground({ type: MSG.CLEAR_ACCESS_KEY });
     if (res.ok) setStatus(res);
-    setMsg({ kind: 'ok', text: 'Key removed.' });
+    setMsg({ kind: 'ok', text: 'Access key removed.' });
   }
 
   return (
     <fieldset className="box">
-      <legend>Groq API key</legend>
+      <legend>AI access key</legend>
       {status?.hasKey ? (
         <p>
           Saved: <code>••••{status.last4}</code> ({status.storage === 'session' ? 'this browser session only' : 'on this device'}){' '}
@@ -47,17 +50,20 @@ function ApiKeyForm() {
           </button>
         </p>
       ) : (
-        <p className="hint">No key set. The key is stored only on this device and never in code or sync.</p>
+        <p className="hint">
+          The AI chat is available by invitation. Enter the access key you were given. Table extraction works without
+          it.
+        </p>
       )}
       <form onSubmit={save} className="stack">
         <input
           type="password"
           autoComplete="off"
           spellCheck={false}
-          placeholder="gsk_…"
+          placeholder="Access key"
           value={key}
           onChange={(e) => setKey(e.target.value)}
-          aria-label="Groq API key"
+          aria-label="Access key"
         />
         <div className="radio-row options">
           <label>
@@ -69,73 +75,11 @@ function ApiKeyForm() {
             Delete when browser closes
           </label>
         </div>
-        <button type="submit" className="primary" disabled={busy || key.trim().length < 20}>
+        <button type="submit" className="primary" disabled={busy || key.trim().length < MIN_ACCESS_KEY_CHARS}>
           {busy ? 'Verifying…' : 'Verify and save'}
         </button>
       </form>
       {msg && <p className={`notice ${msg.kind}`}>{msg.text}</p>}
-    </fieldset>
-  );
-}
-
-function ModelSelect({ settings, update }) {
-  const [models, setModels] = useState(null);
-  const [err, setErr] = useState(null);
-
-  async function load() {
-    setErr(null);
-    const res = await sendToBackground({ type: MSG.LIST_MODELS });
-    if (res.ok) {
-      setModels(res.models);
-      const cur = res.models.find((m) => m.id === settings.model);
-      if (cur) update({ contextWindow: cur.contextWindow });
-      else if (res.models[0]) update({ model: res.models[0].id, contextWindow: res.models[0].contextWindow });
-    } else setErr(errorText(res.error));
-  }
-
-  return (
-    <fieldset className="box">
-      <legend>Model</legend>
-      <div className="row-actions model-row">
-        {models ? (
-          <select
-            value={settings.model}
-            onChange={(e) => {
-              const m = models.find((x) => x.id === e.target.value);
-              update({ model: m.id, contextWindow: m.contextWindow });
-            }}
-          >
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.id}
-                {m.contextWindow ? ` (${formatTokens(m.contextWindow)} context)` : ''}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <code className="ellipsis" title={settings.model}>
-            {settings.model}
-          </code>
-        )}
-        <button type="button" onClick={load}>
-          Load models
-        </button>
-      </div>
-      {err && <p className="notice error">{err}</p>}
-      <label className="field">
-        <span className="field-label value-label">
-          <span>Temperature</span>
-          <span className="value">{settings.temperature.toFixed(1)}</span>
-        </span>
-        <input
-          type="range"
-          min="0"
-          max="1.5"
-          step="0.1"
-          value={settings.temperature}
-          onChange={(e) => update({ temperature: Number(e.target.value) })}
-        />
-      </label>
     </fieldset>
   );
 }
@@ -147,7 +91,7 @@ function PrivacySettings({ settings, update, onClearHistory }) {
       <legend>Privacy and data limits</legend>
       <label className="check">
         <input type="checkbox" checked={settings.allowAiData} onChange={(e) => update({ allowAiData: e.target.checked })} />
-        Allow sending table data to the AI service (api.groq.com)
+        Allow sending table data to the AI assistant (our server, Groq and Tavily web search)
       </label>
       <label className="check">
         <input
@@ -175,6 +119,12 @@ function PrivacySettings({ settings, update, onClearHistory }) {
           onChange={(e) => update({ maxAttachmentChars: Number(e.target.value) })}
         />
       </label>
+      {settings.maxAttachmentChars > LIMITS.DEFAULT_MAX_ATTACHMENT_CHARS && (
+        <p className="hint warn">
+          The AI service currently allows about {LIMITS.DEFAULT_MAX_ATTACHMENT_CHARS.toLocaleString('en-US')} characters
+          of table data per message. Larger data may be rejected as too large.
+        </p>
+      )}
       <label className="check">
         <input type="checkbox" checked={settings.saveHistory} onChange={(e) => update({ saveHistory: e.target.checked })} />
         Save chat history on this device
@@ -227,8 +177,7 @@ export default function SettingsView({ settings, update, onClearHistory }) {
   return (
     <div className="settings-view">
       <AppearanceSettings settings={settings} update={update} />
-      <ApiKeyForm />
-      <ModelSelect settings={settings} update={update} />
+      <AccessKeyForm />
       <PrivacySettings settings={settings} update={update} onClearHistory={onClearHistory} />
       <p className="hint">
         Varbank data may contain patient/sample health data. Check your institution's data protection rules before

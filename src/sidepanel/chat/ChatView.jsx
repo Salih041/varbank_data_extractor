@@ -1,20 +1,21 @@
-// "Sohbet" sekmesi: sohbet listesi, mesajlar, akışlı yanıt, veri eki ve onay akışı.
+// "Sohbet" sekmesi: sohbet listesi, mesajlar, agent'ın adımları (arama, kaynaklar, soru),
+// veri eki ve onay akışı. Konuşmanın geçmişi sunucuda tutulur; her turda yalnızca yeni mesaj gider.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LIMITS } from '../../shared/limits.js';
+import { MSG } from '../../shared/messages.js';
 import { formatTokens } from '../../shared/tokens.js';
-import { errorText } from '../api.js';
+import { errorText, sendToBackground } from '../api.js';
 import { newId, titleFrom } from '../state/conversations.js';
 import { useChatStream } from '../state/useChatStream.js';
 import { buildAttachment, attachmentSummary, identifierColumns } from './attachment.js';
-import { buildRequestMessages } from './context.js';
 import ConsentDialog from './ConsentDialog.jsx';
-import SafeMarkdown from './SafeMarkdown.jsx';
+import SafeMarkdown, { safeUrl } from './SafeMarkdown.jsx';
 
 const EXAMPLES = [
   'Summarize the attached variants and highlight the notable ones.',
   'Which of these variants could be pathogenic? Explain your reasoning.',
-  'Explain what the columns mean.',
+  'What is known about the most notable gene in this data? Search the web if needed.',
 ];
 
 function ConversationBar({ store, disabled }) {
@@ -110,8 +111,60 @@ function RetryCountdown({ seconds, onRetry }) {
   );
 }
 
-function Message({ msg, isLast, streaming, onCopy, onRegenerate, onEdit, onRetry }) {
+// Agent'ın yaptığı aramalar: "Searching: …"
+function AgentSteps({ steps }) {
+  return (
+    <ul className="agent-steps" aria-label="Assistant steps">
+      {steps.map((s, i) => (
+        <li key={i}>
+          <span aria-hidden="true">🔍</span> Searching: <span className="query">{s.query}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Sources({ sources }) {
+  return (
+    <details className="sources">
+      <summary>Sources ({sources.length})</summary>
+      <ol>
+        {sources.map((s) => (
+          <li key={s.url}>
+            <a href={safeUrl(s.url) || undefined} target="_blank" rel="noopener noreferrer nofollow">
+              {s.title || s.url}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
+// Agent kullanıcıya soru sorup bekliyor. Seçeneğe basmak, o metni cevap olarak gönderir.
+function QuestionCard({ question, onAnswer, disabled }) {
+  return (
+    <div className="question-card" role="group" aria-label="Question from the assistant">
+      <p className="question-text">{question.question}</p>
+      {question.options.length > 0 && (
+        <div className="question-options">
+          {question.options.map((o) => (
+            <button key={o} type="button" disabled={disabled} onClick={() => onAnswer(o)}>
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="hint">{question.options.length > 0 ? 'Choose an option or type your answer below.' : 'Type your answer below.'}</p>
+    </div>
+  );
+}
+
+function Message({ msg, isLast, streaming, waking, onCopy, onRetry, onAnswer }) {
   const isUser = msg.role === 'user';
+  const steps = msg.steps || [];
+  const sources = msg.sources || [];
+  const isStreaming = msg.status === 'streaming';
   return (
     <article className={`msg ${msg.role} ${msg.status || ''}`}>
       {msg.attachments?.map((a) => (
@@ -119,13 +172,22 @@ function Message({ msg, isLast, streaming, onCopy, onRegenerate, onEdit, onRetry
           📎 {attachmentSummary(a)}
         </div>
       ))}
+      {steps.length > 0 && <AgentSteps steps={steps} />}
       {isUser ? (
         <div className="msg-text plain">{msg.content}</div>
       ) : (
         <div className="msg-text">
-          {msg.content ? <SafeMarkdown text={msg.content} /> : msg.status === 'streaming' ? <span className="typing">…</span> : null}
+          {msg.content ? (
+            <SafeMarkdown text={msg.content} />
+          ) : isStreaming && waking ? (
+            <span className="typing">Server is waking up…</span>
+          ) : isStreaming ? (
+            <span className="typing">…</span>
+          ) : null}
         </div>
       )}
+      {msg.question && <QuestionCard question={msg.question} onAnswer={onAnswer} disabled={!isLast || streaming} />}
+      {sources.length > 0 && <Sources sources={sources} />}
       {msg.status === 'error' && (
         <div className="error-card" role="alert">
           <span>{errorText(msg.error)}</span>
@@ -133,66 +195,43 @@ function Message({ msg, isLast, streaming, onCopy, onRegenerate, onEdit, onRetry
         </div>
       )}
       {msg.status === 'stopped' && <p className="hint">The response was interrupted.</p>}
-      {msg.status !== 'streaming' && (
+      {!isStreaming && msg.content && (
         <div className="msg-actions">
-          {msg.content && (
-            <button type="button" className="link" onClick={() => onCopy(msg.content)}>
-              Copy
-            </button>
-          )}
-          {!isUser && isLast && !streaming && msg.status !== 'error' && (
-            <button type="button" className="link" onClick={onRegenerate}>
-              Regenerate
-            </button>
-          )}
-          {isUser && onEdit && !streaming && (
-            <button type="button" className="link" onClick={onEdit}>
-              Edit
-            </button>
-          )}
-          {msg.usage?.total ? <span className="hint usage">{msg.usage.total} tokens</span> : null}
+          <button type="button" className="link" onClick={() => onCopy(msg.content)}>
+            Copy
+          </button>
         </div>
       )}
     </article>
   );
 }
 
-export default function ChatView({ settings, update, store, pendingData, setPendingData, active }) {
+export default function ChatView({ settings, update, store, pendingData, setPendingData, active, onOpenSettings }) {
   const { current, mutate } = store;
-  const { start, stop, streaming } = useChatStream();
+  const { start, stop, streaming, waking } = useChatStream();
   const [draft, setDraft] = useState('');
-  const [prebuilt, setPrebuilt] = useState(null); // düzenleme ile geri gelen hazır ek
   const [excludeIds, setExcludeIds] = useState(true);
   const [consent, setConsent] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [hasKey, setHasKey] = useState(null);
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const stickToBottom = useRef(true);
 
-  const contextTokens = settings.contextWindow || LIMITS.DEFAULT_CONTEXT_TOKENS;
-
   const idCols = useMemo(() => (pendingData ? identifierColumns(pendingData.columns) : []), [pendingData]);
   const attachment = useMemo(() => {
-    if (prebuilt) return prebuilt;
     if (!pendingData) return null;
     return buildAttachment(pendingData, {
       maxChars: settings.maxAttachmentChars,
       excludeColumns: excludeIds ? idCols : [],
     });
-  }, [prebuilt, pendingData, settings.maxAttachmentChars, excludeIds, idCols]);
+  }, [pendingData, settings.maxAttachmentChars, excludeIds, idCols]);
 
-  // Taslak + ek ile tahmini istek boyutu.
-  const estimate = useMemo(() => {
-    if (!current) return null;
-    const probe = [
-      ...current.messages,
-      { role: 'user', content: draft || ' ', attachments: attachment ? [{ ...attachment, id: '__probe' }] : [] },
-    ];
-    return buildRequestMessages(probe, { contextTokens, responseTokens: LIMITS.DEFAULT_MAX_COMPLETION_TOKENS });
-  }, [current, draft, attachment, contextTokens]);
-
+  // Sekme her açıldığında erişim anahtarı var mı diye bakılır (Ayarlar'da değişmiş olabilir).
   useEffect(() => {
-    if (active) inputRef.current?.focus();
+    if (!active) return;
+    inputRef.current?.focus();
+    sendToBackground({ type: MSG.GET_KEY_STATUS }).then((res) => setHasKey(!!res.hasKey));
   }, [active]);
 
   useEffect(() => {
@@ -205,44 +244,42 @@ export default function ChatView({ settings, update, store, pendingData, setPend
     setTimeout(() => setNotice(null), 2500);
   };
 
-  const runCompletion = useCallback(
-    (messages) => {
+  // Mesajı sunucuya gönderir ve gelen cevabı (adımlar, kaynaklar, soru, metin) yeni bir asistan
+  // mesajına yazar. messages: kullanıcının mesajı dahil, ekranda görünecek liste.
+  const runAgent = useCallback(
+    (messages, text, attachmentText) => {
       const assistantId = newId();
-      const built = buildRequestMessages(messages, { contextTokens, responseTokens: LIMITS.DEFAULT_MAX_COMPLETION_TOKENS });
       const placeholder = {
         id: assistantId,
         role: 'assistant',
         content: '',
-        status: built.ok ? 'streaming' : 'error',
-        error: built.ok ? undefined : built.error,
+        steps: [],
+        sources: [],
+        question: null,
+        status: 'streaming',
         createdAt: Date.now(),
-        droppedCount: built.ok ? built.droppedCount : 0,
       };
-      mutate((c) => ({ ...c, messages: [...messages, placeholder] }), !built.ok);
-      if (!built.ok) return;
+      mutate((c) => ({ ...c, messages: [...messages, placeholder] }), false);
 
       const patch = (p, persist) =>
         mutate((c) => ({ ...c, messages: c.messages.map((m) => (m.id === assistantId ? { ...m, ...p } : m)) }), persist);
 
       start({
-        model: settings.model,
-        messages: built.messages,
-        temperature: settings.temperature,
-        maxTokens: LIMITS.DEFAULT_MAX_COMPLETION_TOKENS,
-        onText: (text) => patch({ content: text }, false),
-        onDone: ({ usage, finishReason }) => patch({ status: 'done', usage, finishReason }, true),
-        onError: (code, retryAfter, partial) =>
+        threadId: current.id,
+        message: text,
+        attachment: attachmentText,
+        onUpdate: (reply) => patch(reply, false),
+        onDone: (reply) => patch({ ...reply, status: 'done' }, true),
+        onError: (code, retryAfter, reply) =>
           patch(
-            code === 'ABORTED'
-              ? { status: 'stopped', content: partial }
-              : partial && code === 'DISCONNECTED'
-                ? { status: 'stopped', content: partial }
-                : { status: 'error', error: code, retryAfter, content: partial },
+            code === 'ABORTED' || (code === 'DISCONNECTED' && reply.content)
+              ? { ...reply, status: 'stopped' }
+              : { ...reply, status: 'error', error: code, retryAfter },
             true,
           ),
       });
     },
-    [contextTokens, mutate, settings.model, settings.temperature, start],
+    [current?.id, mutate, start],
   );
 
   function doSend(text, att) {
@@ -253,24 +290,29 @@ export default function ChatView({ settings, update, store, pendingData, setPend
       attachments: att ? [{ ...att, id: newId() }] : [],
       createdAt: Date.now(),
     };
-    const isFirst = current.messages.length === 0;
-    const messages = [...current.messages, userMsg];
-    if (isFirst) mutate((c) => ({ ...c, title: titleFrom(text) }), false);
+    if (current.messages.length === 0) mutate((c) => ({ ...c, title: titleFrom(text) }), false);
     setDraft('');
-    setPrebuilt(null);
     if (att) setPendingData(null);
     stickToBottom.current = true;
-    runCompletion(messages);
+    runAgent([...current.messages, userMsg], text, att?.text);
   }
 
-  function send() {
-    const text = draft.trim();
+  const msgs = current?.messages || [];
+  const last = msgs.at(-1);
+  // Agent bir soru sorup bekliyorsa sonraki mesaj o sorunun cevabıdır (ek gönderilmez, bekletilir).
+  const awaitingAnswer = last?.role === 'assistant' && last.question && last.status === 'done';
+
+  function send(text = draft.trim()) {
     if (!text || streaming || !current) return;
     if (text.length > LIMITS.MAX_USER_MESSAGE_CHARS) {
       flash(`A message can be at most ${LIMITS.MAX_USER_MESSAGE_CHARS} characters.`);
       return;
     }
-    if (attachment && (!settings.allowAiData || (settings.askEveryTime && !current.consentRemembered))) {
+    if (awaitingAnswer || !attachment) {
+      doSend(text, null);
+      return;
+    }
+    if (!settings.allowAiData || (settings.askEveryTime && !current.consentRemembered)) {
       setConsent({ text });
       return;
     }
@@ -285,21 +327,12 @@ export default function ChatView({ settings, update, store, pendingData, setPend
     doSend(text, attachment);
   }
 
-  function regenerate() {
-    const msgs = current.messages;
+  // Hata sonrası: son kullanıcı mesajını (ve ekini) yeniden gönderir.
+  function retry() {
     const lastUser = msgs.map((m) => m.role).lastIndexOf('user');
     if (lastUser < 0) return;
-    runCompletion(msgs.slice(0, lastUser + 1));
-  }
-
-  function editLast() {
-    const msgs = current.messages;
-    const lastUser = msgs.map((m) => m.role).lastIndexOf('user');
     const m = msgs[lastUser];
-    setDraft(m.content);
-    if (m.attachments?.length) setPrebuilt(m.attachments[m.attachments.length - 1]);
-    mutate((c) => ({ ...c, messages: msgs.slice(0, lastUser) }));
-    inputRef.current?.focus();
+    runAgent(msgs.slice(0, lastUser + 1), m.content, m.attachments?.at(-1)?.text);
   }
 
   const onKeyDown = (e) => {
@@ -310,11 +343,6 @@ export default function ChatView({ settings, update, store, pendingData, setPend
   };
 
   if (!current) return <p className="empty">Loading…</p>;
-
-  const msgs = current.messages;
-  const lastUserIdx = msgs.map((m) => m.role).lastIndexOf('user');
-  const dropped = msgs.at(-1)?.droppedCount;
-  const overBudget = estimate && !estimate.ok && estimate.error === 'TOO_LARGE';
 
   return (
     <div className="chat-view">
@@ -332,7 +360,10 @@ export default function ChatView({ settings, update, store, pendingData, setPend
       >
         {msgs.length === 0 ? (
           <div className="empty">
-            <p>Ask questions about your Varbank data. You can attach data from the Tables tab.</p>
+            <p>
+              Ask questions about your Varbank data. You can attach data from the Tables tab. The assistant can search
+              the web and may ask you a question when your request is unclear.
+            </p>
             <div className="examples">
               {EXAMPLES.map((ex) => (
                 <button key={ex} type="button" className="example" onClick={() => setDraft(ex)}>
@@ -348,17 +379,25 @@ export default function ChatView({ settings, update, store, pendingData, setPend
               msg={m}
               isLast={i === msgs.length - 1}
               streaming={streaming}
+              waking={waking}
               onCopy={(t) => navigator.clipboard.writeText(t).then(() => flash('Copied.'), () => flash('Could not copy.'))}
-              onRegenerate={regenerate}
-              onRetry={regenerate}
-              onEdit={i === lastUserIdx ? editLast : null}
+              onRetry={retry}
+              onAnswer={(option) => send(option)}
             />
           ))
         )}
-        {dropped > 0 && <p className="hint center">The oldest {dropped} message(s) were not sent to the model due to the context limit.</p>}
       </div>
 
       {notice && <p className="notice ok" role="status">{notice}</p>}
+
+      {hasKey === false && (
+        <p className="notice warn">
+          The AI chat needs an access key.{' '}
+          <button type="button" className="link" onClick={onOpenSettings}>
+            Add it in Settings
+          </button>
+        </p>
+      )}
 
       <div className="composer">
         {attachment && (
@@ -366,15 +405,7 @@ export default function ChatView({ settings, update, store, pendingData, setPend
             <span title={attachment.columns.join(', ')}>
               📎 {attachmentSummary(attachment)} · ~{formatTokens(attachment.tokens)} token
             </span>
-            <button
-              type="button"
-              className="icon"
-              aria-label="Remove attachment"
-              onClick={() => {
-                setPrebuilt(null);
-                setPendingData(null);
-              }}
-            >
+            <button type="button" className="icon" aria-label="Remove attachment" onClick={() => setPendingData(null)}>
               ✕
             </button>
           </div>
@@ -385,11 +416,14 @@ export default function ChatView({ settings, update, store, pendingData, setPend
             rows will be sent. Select fewer columns or raise the limit in Settings.
           </p>
         )}
+        {attachment && awaitingAnswer && (
+          <p className="hint">The data will be attached to your next question, not to this answer.</p>
+        )}
         <textarea
           ref={inputRef}
           rows={1}
           value={draft}
-          placeholder={attachment ? 'Ask about the attached data…' : 'Type a message…'}
+          placeholder={awaitingAnswer ? 'Type your answer…' : attachment ? 'Ask about the attached data…' : 'Type a message…'}
           title="Enter to send · Shift+Enter for a new line · Esc to stop"
           onChange={(e) => {
             setDraft(e.target.value);
@@ -402,22 +436,12 @@ export default function ChatView({ settings, update, store, pendingData, setPend
           aria-label="Message"
         />
         <div className="composer-meta">
-          <span
-            className={`hint budget ${overBudget ? 'error' : ''}`}
-            title={overBudget ? 'The request exceeds the model context limit' : 'Estimated request size / context budget'}
-          >
-            {estimate && `~${formatTokens(estimate.estimatedTokens)} / ${formatTokens(contextTokens - LIMITS.DEFAULT_MAX_COMPLETION_TOKENS)} tokens`}
-            {overBudget && <span className="long-only"> — exceeds the context limit</span>}
-          </span>
-          <span className="hint model-name" title={settings.model}>
-            {settings.model}
-          </span>
           {streaming ? (
             <button type="button" onClick={stop}>
               ■ Stop
             </button>
           ) : (
-            <button type="button" className="primary" disabled={!draft.trim() || overBudget} onClick={send}>
+            <button type="button" className="primary" disabled={!draft.trim() || hasKey === false} onClick={() => send()}>
               Send
             </button>
           )}
@@ -427,7 +451,7 @@ export default function ChatView({ settings, update, store, pendingData, setPend
       {consent && attachment && (
         <ConsentDialog
           attachment={attachment}
-          identifierCols={prebuilt ? [] : idCols}
+          identifierCols={idCols}
           excludeIds={excludeIds}
           setExcludeIds={setExcludeIds}
           needsEnable={!settings.allowAiData}

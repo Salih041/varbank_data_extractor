@@ -46,13 +46,14 @@ export async function sendToBackground(msg) {
 }
 
 export const ERROR_TEXT = {
-  NO_KEY: 'No Groq API key set. Add one in the Settings tab.',
-  UNAUTHORIZED: 'The API key is invalid or unauthorized.',
-  RATE_LIMIT: 'Rate limit reached. Wait a moment and try again.',
-  TOO_LARGE: "The request exceeds the model's context limit. Send fewer rows/columns.",
-  MODEL: 'The selected model is not available. Choose another model in Settings.',
+  NO_ACCESS_KEY: 'No access key set. Add one in the Settings tab.',
+  BAD_ACCESS_KEY: 'The access key is not valid.',
+  TOO_MANY_ATTEMPTS: 'Too many wrong access keys. Try again in 15 minutes.',
+  RATE_LIMIT: 'The AI model is busy (per-minute limit reached). Wait a moment and try again.',
+  TOO_LARGE: "This request is too large for the AI model's per-minute limit. Attach fewer rows or columns.",
+  TOO_MANY_STEPS: 'The assistant could not finish this request. Try asking more specifically.',
   SERVER: 'The AI service is not responding right now. Try again later.',
-  NETWORK: 'Network error. Check your internet connection.',
+  NETWORK: 'Could not reach the AI server. Check your internet connection.',
   ABORTED: 'Response stopped.',
   BAD_RESPONSE: 'Unexpected response from the AI service.',
   BAD_REQUEST: 'Invalid request.',

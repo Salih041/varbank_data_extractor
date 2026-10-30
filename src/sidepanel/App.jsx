@@ -111,6 +111,7 @@ export default function App() {
             pendingData={pendingData}
             setPendingData={setPendingData}
             active={view === 'chat'}
+            onOpenSettings={() => setView('settings')}
           />
         </div>
         {view === 'settings' && <SettingsView settings={settings} update={updateSettings} onClearHistory={store.removeAll} />}

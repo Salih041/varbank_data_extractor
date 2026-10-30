@@ -2,9 +2,14 @@
 //   conv_index      -> [{id, title, createdAt, updatedAt}]  (yeniden eskiye)
 //   conv:<id>       -> {id, title, createdAt, updatedAt, consentRemembered, messages:[...]}
 // "Geçmişi kaydet" kapalıysa hiçbir şey diske yazılmaz, yalnızca bellekte tutulur.
+//
+// Konuşmanın id'si (rastgele UUID) aynı zamanda sunucudaki thread_id'dir: agent'ın hafızası
+// sunucuda bu kimlikle tutulur. Konuşma burada silinince sunucudaki kaydı da silinir.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LIMITS } from '../../shared/limits.js';
+import { MSG } from '../../shared/messages.js';
+import { sendToBackground } from '../api.js';
 
 const INDEX_KEY = 'conv_index';
 const convKey = (id) => `conv:${id}`;
@@ -22,6 +27,11 @@ export function titleFrom(text) {
 }
 
 const meta = ({ id, title, createdAt, updatedAt }) => ({ id, title, createdAt, updatedAt });
+
+// Sunucudaki kaydı sil. Sunucuya ulaşılamazsa sorun değil: sunucu eski kayıtları kendisi de temizler.
+const deleteOnServer = (ids) => {
+  for (const id of ids) sendToBackground({ type: MSG.DELETE_THREAD, threadId: id }).catch(() => {});
+};
 
 export function useConversations(saveHistory) {
   const [index, setIndex] = useState([]);
@@ -59,7 +69,10 @@ export function useConversations(saveHistory) {
     idx.unshift(meta(conv));
     const overflow = idx.splice(LIMITS.MAX_CONVERSATIONS);
     await chrome.storage.local.set({ [INDEX_KEY]: idx, [convKey(conv.id)]: stored });
-    if (overflow.length) await chrome.storage.local.remove(overflow.map((x) => convKey(x.id)));
+    if (overflow.length) {
+      await chrome.storage.local.remove(overflow.map((x) => convKey(x.id)));
+      deleteOnServer(overflow.map((x) => x.id));
+    }
     setIndex(idx);
   }, []);
 
@@ -88,6 +101,7 @@ export function useConversations(saveHistory) {
     const idx = ((await chrome.storage.local.get(INDEX_KEY))[INDEX_KEY] || []).filter((x) => x.id !== id);
     await chrome.storage.local.set({ [INDEX_KEY]: idx });
     await chrome.storage.local.remove(convKey(id));
+    deleteOnServer([id]);
     setIndex(idx);
     if (currentRef.current?.id === id) setCurrent(makeConversation());
   }, []);
@@ -107,7 +121,10 @@ export function useConversations(saveHistory) {
 
   const removeAll = useCallback(async () => {
     const all = await chrome.storage.local.get(null);
+    const ids = new Set((all[INDEX_KEY] || []).map((x) => x.id));
+    if (currentRef.current?.messages.length) ids.add(currentRef.current.id);
     await chrome.storage.local.remove(Object.keys(all).filter((k) => k === INDEX_KEY || k.startsWith('conv:')));
+    deleteOnServer([...ids]);
     setIndex([]);
     setCurrent(makeConversation());
   }, []);

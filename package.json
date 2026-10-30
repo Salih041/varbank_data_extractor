@@ -1,6 +1,6 @@
 {
   "name": "table-extractor",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
   "license": "MIT",
   "description": "Chrome extension (MV3) that extracts selected rows and columns from Varbank 2.0 tables as JSON and optionally discusses them with an AI model via Groq.",
