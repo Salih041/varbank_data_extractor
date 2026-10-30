@@ -31,6 +31,9 @@ class FakeLLM(GenericFakeChatModel):
     # araç çağrısını tek parça olarak verir.
     def _stream(self, messages, stop=None, run_manager=None, **kwargs):
         message = self._generate(messages).generations[0].message
+        reasoning = message.additional_kwargs.get("reasoning_content")
+        if reasoning:  # gpt-oss gibi modellerin "düşünme" parçası: metni boş
+            yield ChatGenerationChunk(message=AIMessageChunk(content="", additional_kwargs={"reasoning_content": reasoning}))
         if message.tool_calls:
             chunks = [
                 {"name": c["name"], "args": json.dumps(c["args"]), "id": c["id"], "index": i}

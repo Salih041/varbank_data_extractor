@@ -96,6 +96,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // --- Akışlı sohbet ---------------------------------------------------------------
 
+const KEEP_ALIVE_MS = 20_000;
+
 function validateChatStart(m) {
   if (!isUuid(m.threadId)) return false;
   if (typeof m.message !== 'string' || !m.message.trim() || m.message.length > LIMITS.MAX_USER_MESSAGE_CHARS) return false;
@@ -132,6 +134,10 @@ chrome.runtime.onConnect.addListener((port) => {
       return;
     }
     controller = new AbortController();
+    // Chrome, 30 sn boyunca hiçbir eklenti API'si çağırmayan service worker'ı kapatır; sunucu uzun
+    // süre sessiz kalırsa (model düşünüyor, Groq bekletiyor) bağlantı kopardı. Akış sürdükçe 20 sn'de
+    // bir zararsız bir API çağrısı yapılarak service worker açık tutulur.
+    const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), KEEP_ALIVE_MS);
     try {
       await streamAgentChat({
         accessKey: await getAccessKey(),
@@ -147,6 +153,7 @@ chrome.runtime.onConnect.addListener((port) => {
       if (!(e instanceof ApiError)) console.warn('chat error:', redact(e?.message));
       post({ type: 'error', error: payload.error, retryAfter: payload.retryAfter });
     } finally {
+      clearInterval(keepAlive);
       controller = null;
     }
   });

@@ -93,9 +93,10 @@ function fakePort() {
 beforeEach(() => {
   ports = [];
   hasKey = true;
+  // Hemen çalıştırır ve 0 döner: bir sonraki olay da yeniden çizim isteyebilsin.
   vi.stubGlobal('requestAnimationFrame', (cb) => {
     cb();
-    return 1;
+    return 0;
   });
   vi.stubGlobal('cancelAnimationFrame', () => {});
   vi.stubGlobal('chrome', {
@@ -174,6 +175,15 @@ describe('ChatView ve agent', () => {
     const second = ports.at(-1);
     expect(second).not.toBe(first);
     expect(second.posted[0]).toMatchObject({ message: 'Zellweger syndrome', threadId: first.posted[0].threadId });
+  });
+
+  it('model düşünürken "Thinking…" gösterir, cevap gelince kaybolur', async () => {
+    render(<Harness />);
+    const port = await sendMessage('Which variant matters?');
+    port.emit({ type: 'status', state: 'thinking' });
+    expect(screen.getByText('Thinking…')).toBeTruthy();
+    port.emit({ type: 'token', text: 'PEX10.' });
+    expect(screen.queryByText('Thinking…')).toBeNull();
   });
 
   it('hata kodunu okunur metne çevirir ve tekrar deneme sunar', async () => {

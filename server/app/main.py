@@ -3,6 +3,7 @@
 
 import json
 import logging
+import time
 from uuid import UUID
 
 from fastapi import FastAPI, Header, Request
@@ -28,6 +29,8 @@ logger = logging.getLogger("agent")
 # agent -> tools -> agent zincirinin her halkası bir adım. Arama sayısını graph.py sınırlar;
 # bu, beklenmedik bir döngüye karşı son güvenlik ağıdır.
 MAX_GRAPH_STEPS = 12
+# Model "düşünürken" en fazla bu sıklıkta status olayı gönderilir.
+STATUS_EVERY_SECONDS = 5
 # En büyük geçerli istek (120.000 karakter tablo + 8.000 karakter mesaj) bunun altında kalır.
 MAX_BODY_BYTES = 600_000
 
@@ -109,11 +112,19 @@ def events(graph_input, config):
         #   "messages": modelin yazdığı her parça (token)
         #   "updates":  bir düğüm işini bitirince eklediği mesajlar (ve grafik durduysa sorusu)
         stream = graph.stream(graph_input, config, stream_mode=["messages", "updates"])
+        last_status = 0.0
         for mode, data in stream:
             if mode == "messages":
                 chunk, metadata = data
-                if metadata["langgraph_node"] == "agent" and chunk.content:
+                if metadata["langgraph_node"] != "agent":
+                    continue
+                if chunk.content:
                     yield sse("token", {"text": chunk.content})
+                elif chunk.additional_kwargs.get("reasoning_content") and time.time() - last_status > STATUS_EVERY_SECONDS:
+                    # Model cevap yazmadan önce "düşünüyor" (metin yok). Arada bir haber verilir ki
+                    # kullanıcı ne olduğunu görsün ve bağlantı uzun süre sessiz kalmasın.
+                    last_status = time.time()
+                    yield sse("status", {"state": "thinking"})
 
             elif "agent" in data:
                 # Model arama yapmaya karar verdiyse, arama başlamadan kullanıcıya göster.

@@ -181,6 +181,8 @@ function Message({ msg, isLast, streaming, waking, onCopy, onRetry, onAnswer }) 
             <SafeMarkdown text={msg.content} />
           ) : isStreaming && waking ? (
             <span className="typing">Server is waking up…</span>
+          ) : isStreaming && msg.thinking ? (
+            <span className="typing">Thinking…</span>
           ) : isStreaming ? (
             <span className="typing">…</span>
           ) : null}

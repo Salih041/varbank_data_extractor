@@ -25,6 +25,10 @@ llm = ChatGroq(
     temperature=0.3,
     max_tokens=2048,
     timeout=60,
+    # Groq "dakikalık sınır doldu" derse kütüphane sessizce bekleyip tekrar dener; bu bekleme
+    # kullanıcıya hiçbir şey göstermeden uzayabilir. En fazla bir kez denenir, sonra kullanıcıya
+    # "biraz bekleyin" hatası (geri sayımlı Retry) gösterilir.
+    max_retries=1,
 )
 # bind_tools: modele "bu araçları kullanabilirsin" der (adlarını ve açıklamalarını gönderir).
 llm_with_tools = llm.bind_tools(tools)

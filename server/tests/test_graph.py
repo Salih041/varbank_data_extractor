@@ -41,6 +41,16 @@ def test_chat_streams_tokens_then_done(monkeypatch, client):
     assert events[-1] == ("done", {})
 
 
+def test_thinking_status_is_sent_before_the_answer(monkeypatch, client):
+    thinking = AIMessage("PEX10 is relevant.", additional_kwargs={"reasoning_content": "Let me think..."})
+    use_fake_llm(monkeypatch, thinking)
+    events = read_events(client.post("/chat", json={"thread_id": new_thread(), "message": "Which?"}))
+
+    assert events[0] == ("status", {"state": "thinking"})
+    assert "".join(data["text"] for name, data in events if name == "token") == "PEX10 is relevant."
+    assert events[-1] == ("done", {})
+
+
 class BrokenLLM:
     def invoke(self, messages):
         raise RuntimeError("secret detail gsk_should_not_leak")

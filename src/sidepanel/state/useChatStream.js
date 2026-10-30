@@ -39,7 +39,7 @@ export function useChatStream() {
     setWaking(false);
     const wakingTimer = setTimeout(() => setWaking(true), WAKING_AFTER_MS);
 
-    const reply = { content: '', steps: [], sources: [], question: null };
+    const reply = { content: '', steps: [], sources: [], question: null, thinking: false };
     let raf = 0;
     let finished = false;
     const snapshot = () => ({ ...reply, steps: [...reply.steps], sources: [...reply.sources] });
@@ -66,7 +66,8 @@ export function useChatStream() {
     port.onMessage.addListener((m) => {
       clearTimeout(wakingTimer);
       setWaking(false);
-      if (m.type === 'token') reply.content += m.text;
+      if (m.type === 'status') reply.thinking = true;
+      else if (m.type === 'token') reply.content += m.text;
       else if (m.type === 'tool_start') reply.steps.push({ query: m.query });
       else if (m.type === 'tool_result') {
         for (const s of m.sources) {

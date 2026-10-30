@@ -84,6 +84,8 @@ function cleanEvent(type, data) {
       const question = cleanText(data.question, 300);
       return question ? { type, question, options } : null;
     }
+    case 'status':
+      return data.state === 'thinking' ? { type, state: 'thinking' } : null;
     case 'done':
       return { type };
     case 'error': {

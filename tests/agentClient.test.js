@@ -50,6 +50,11 @@ describe('parseEvent', () => {
     });
   });
 
+  it('"düşünüyor" durumunu geçirir, bilinmeyen durumu atar', () => {
+    expect(parseEvent('event: status\ndata: {"state": "thinking"}')).toEqual({ type: 'status', state: 'thinking' });
+    expect(parseEvent('event: status\ndata: {"state": "<b>x</b>"}')).toBeNull();
+  });
+
   it('bilinmeyen veya bozuk olayları atar', () => {
     expect(parseEvent('event: hack\ndata: {"x": 1}')).toBeNull();
     expect(parseEvent('event: token\ndata: {bozuk')).toBeNull();
